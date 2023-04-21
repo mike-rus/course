@@ -1,0 +1,1 @@
+main-targets := main_target1 main_target2 main_target3 main_target4
