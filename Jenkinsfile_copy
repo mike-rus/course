@@ -1,0 +1,25 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'SHA', defaultValue: '', description: 'SHA commit to process.')
+    }
+    stages {
+        stage('Select File') {
+            steps {
+                script {
+                    def git = checkout([$class: 'GitSCM'])
+                    sh "git checkout ${params.SHA}"
+                    def fileList = sh(script: "git ls-files", returnStdout: true).trim().split('\n')
+                    def fileChoice = input(
+                        message: 'Select a file to process:',
+                        parameters: [
+                            choice(choices: fileList, description: 'Select a file to process.')
+                        ]
+                    )
+                    // Выбранный файл
+                    echo "Selected file: ${fileChoice}"
+                }
+            }
+        }
+    }
+}
