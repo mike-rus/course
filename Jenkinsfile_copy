@@ -1,5 +1,8 @@
 def fileList
 def filenum
+def targets
+def type
+
 node {
     stage('Clone repository') {
         // Fetch changes from the remote repository
@@ -11,15 +14,18 @@ node {
         fileList = sh(script: "ls", returnStdout: true).trim().split('\n') // Get a list of files
         echo "Number of files: ${filenum}" // Print the count of the files
         echo "${fileList.collect{ "'${it}'" }.join(', ')}"
-        
+    }
+    stage('List of targets') {
+        targets = sh(returnStdout: true, script: 'make -n print-variable').trim()
     }
 }
+
 properties([
     parameters([
         [$class: 'CascadeChoiceParameter', 
-            choiceType: 'PT_RADIO',
+            choiceType: 'PT_SINGLE_SELECT',
             description: 'Select a choice',
-            name: 'Param_heram',
+            name: 'choice1',
             referencedParameters: 'FILES_NUM',
             script: [$class: 'GroovyScript',
                 script: [
@@ -32,9 +38,62 @@ properties([
                     """
                 ]
             ]
+        ],
+        [$class: 'CascadeChoiceParameter', 
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Select a type',
+            name: 'Type',
+            script: [$class: 'GroovyScript',
+                script: [
+                    classpath: [], 
+                    sandbox: true, 
+                    script: """
+                        def type = "${type}"
+                        return type.tokenize().toList()
+                        
+                    """
+                ]
+            ]
+        ],
+      
+        [$class: 'CascadeChoiceParameter', 
+            choiceType: 'PT_SINGLE_SELECT',
+            description: 'Select a target',
+            referencedParameters: 'Type',
+            name: 'Target',
+            script: [$class: 'GroovyScript',
+                script: [
+                    classpath: [], 
+                    sandbox: true, 
+                    script: """
+                        def targets = "${targets}"
+                        
+                        def command = "make print-variable ${Type}"
+                        
+                        def processBuilder = new ProcessBuilder(command.split(' '))
+                        processBuilder.redirectErrorStream(true)
+                        
+                        def process = processBuilder.start()
+                        def inputStream = process.getInputStream()
+                        def output = new StringBuilder()
+                        
+                        inputStream.eachLine { line ->
+                            output.append(line)
+                        }
+                        
+                        process.waitFor()
+                        
+                        println(output.toString())
+                        
+                        return targets.tokenize().toList()
+                    """
+                ]
+            ]
         ]
+        
     ])
 ])
+
 pipeline {
     agent any
     parameters {
